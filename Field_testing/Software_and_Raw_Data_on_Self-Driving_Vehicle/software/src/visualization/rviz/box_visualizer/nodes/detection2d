@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+
+import rospy
+
+from zzz_common.params import parse_private_args
+from zzz_perception_msgs.msg import DetectionBox2DArray
+from sensor_msgs.msg import Image
+from zzz_visualization_rviz_box_visualizer.detection2d import DetectionBox2DVisualizer
+
+class Node():
+    def __init__(self):
+        params = parse_private_args(
+            input_topic="objects2d_detected",
+            image_topic="/zzz/drivers/image_raw",
+            output_topic="objects2d_visual",
+
+            label_color=[255,255,255,1],
+            box_color=[51,102,255,0.8],
+            
+            centroid_scale=0.5,
+            label_scale=0.5,
+            label_height=1,
+            box_max_size=10
+        )
+
+        self._detections_subscriber = rospy.Subscriber(params.pop("input_topic"), DetectionBox2DArray, self.detection_callback)
+        self._image_subscriber = rospy.Subscriber(params.pop("image_topic"), Image, self.image_callback)
+        self._publisher = rospy.Publisher(params.pop("output_topic"), Image, queue_size=1)
+        self._visualizer = DetectionBox2DVisualizer(**params)
+
+    def image_callback(self, msg):
+        self._visualizer.receive_image(msg)
+
+    def detection_callback(self, msg):
+        self._publisher.publish(self._visualizer.visualize(msg))
+
+if __name__ == "__main__":
+    rospy.init_node("detection2d_visualizer")
+    node = Node()
+    rospy.spin()

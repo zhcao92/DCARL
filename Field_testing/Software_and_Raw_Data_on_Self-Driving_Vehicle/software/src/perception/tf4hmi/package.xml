@@ -1,0 +1,23 @@
+<package>
+	<name>tf4hmi</name>
+	<version>1.0.0</version>
+	<description>tf4hmi for old imu driver data</description>
+	<maintainer email="hongyan.pei@novauto.com.cn">Hongyan Pei</maintainer>
+	<license>BSD</license>
+	<author email="hongyan.pei@novauto.com.cn">Hongyan Pei</author>
+	<buildtool_depend>catkin</buildtool_depend>
+
+	<build_depend>roscpp</build_depend>
+	<run_depend>roscpp</run_depend>	
+	<build_depend>sensor_msgs</build_depend>
+	<run_depend>sensor_msgs</run_depend>	
+	<build_depend>geometry_msgs</build_depend>
+	<run_depend>geometry_msgs</run_depend>
+	<build_depend>nav_msgs</build_depend>
+	<run_depend>nav_msgs</run_depend>
+	<build_depend>geodesy</build_depend>
+	<run_depend>geodesy</run_depend>
+	<build_depend>tf</build_depend>
+	<run_depend>tf</run_depend>
+
+</package>

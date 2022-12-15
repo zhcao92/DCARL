@@ -1,0 +1,5 @@
+# New origin of the given map
+sensor_msgs/NavSatFix origin
+---
+# A flag indicating the update result
+uint8 status

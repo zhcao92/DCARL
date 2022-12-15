@@ -1,0 +1,57 @@
+<launch>
+
+  <!-- leopard usb-cam. param: 1920x1020 yuyv  -->
+  <include file="$(find usb_cam)/launch/usb_cam-test.launch">
+  </include>
+
+  <!-- all three lidar  -->
+  <include file="$(find rslidar_sync)/launch/middle_lidar.launch">
+  </include>
+
+
+  <!-- cannet get car's control/status info  -->
+  <include file="$(find canbus)/launch/canbus.launch">  
+  </include>
+
+
+  <!-- oxford gps imu  -->
+  <include file="$(find oxford_gps_eth)/launch/gps.launch">  
+  </include>
+
+
+  <!-- localization oxford-2 -->
+  <param name="debug" type="bool" value="false" />
+
+  <!-- 北偏西取正 -->
+  <param name="yaw_n2w" type="bool" value="false" />
+
+  <!---input topics -->
+  <param name="in_gps_topic" value="/ox_gps/fix" />
+  <param name="in_imu_topic" value="/ox_imu/data" />
+  <param name="in_vel_topic" value="/ox_gps/vel" />
+  <param name="in_odom_topic" value="/ox_gps/odom" />
+  <param name="in_pos_type_topic" value="/ox_gps/pos_type" />
+  <param name="in_nav_status_topic" value="/ox_gps/nav_status" />
+  <param name="in_gps_time_ref_topic" value="/ox_gps/time_ref" />
+
+  <!---output topics -->
+  <param name="gps_fix_topic" value="/localization/gps/fix" />
+  <param name="gps_vel_topic" value="/localization/gps/vel" />
+  <param name="gps_odom_topic" value="/localization/gps/odom" />
+  <param name="gps_imu_topic" value="/localization/imu/data" />
+  <param name="gps_pos_type_topic" value=" /localization/gps/pos_type" />
+  <param name="gps_nav_status_topic" value=" /localization/gps/nav_status" />
+  <param name="gps_time_ref_topic" value=" /localization/gps/time_ref" />
+
+
+  <!-- 初始位置GPS0,默认使用地图左下角的点,可以修改这里改变零点, 
+        utm (426660.51591584098, 4417656.7450509444, 50, 'S') -->
+  <param name="lat0" type="double" value="39.90582185794227" />
+  <param name="lon0" type="double" value="116.14200170513072" />
+  <param name="alt0" type="double" value="74.7032012939" />
+
+  <!--- run-node -->
+  <node pkg="global_localization" type="global_fusion_oxford_node2" name="global_fusion_oxford_node2" output="screen">
+  </node>
+
+</launch>

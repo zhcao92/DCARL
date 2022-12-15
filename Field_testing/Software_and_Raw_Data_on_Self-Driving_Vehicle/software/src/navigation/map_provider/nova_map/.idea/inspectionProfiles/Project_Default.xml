@@ -1,0 +1,34 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <value>
+          <list size="21">
+            <item index="0" class="java.lang.String" itemvalue="networkx" />
+            <item index="1" class="java.lang.String" itemvalue="xlutils" />
+            <item index="2" class="java.lang.String" itemvalue="py-trees" />
+            <item index="3" class="java.lang.String" itemvalue="Shapely" />
+            <item index="4" class="java.lang.String" itemvalue="apscheduler" />
+            <item index="5" class="java.lang.String" itemvalue="carla" />
+            <item index="6" class="java.lang.String" itemvalue="xlwt" />
+            <item index="7" class="java.lang.String" itemvalue="line_profiler" />
+            <item index="8" class="java.lang.String" itemvalue="xmlschema" />
+            <item index="9" class="java.lang.String" itemvalue="xlrd" />
+            <item index="10" class="java.lang.String" itemvalue="psutil" />
+            <item index="11" class="java.lang.String" itemvalue="easydict" />
+            <item index="12" class="java.lang.String" itemvalue="scipy" />
+            <item index="13" class="java.lang.String" itemvalue="shapely" />
+            <item index="14" class="java.lang.String" itemvalue="filterpy" />
+            <item index="15" class="java.lang.String" itemvalue="cython" />
+            <item index="16" class="java.lang.String" itemvalue="cvxopt" />
+            <item index="17" class="java.lang.String" itemvalue="plotly" />
+            <item index="18" class="java.lang.String" itemvalue="dash" />
+            <item index="19" class="java.lang.String" itemvalue="utm" />
+            <item index="20" class="java.lang.String" itemvalue="intervaltree" />
+          </list>
+        </value>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>

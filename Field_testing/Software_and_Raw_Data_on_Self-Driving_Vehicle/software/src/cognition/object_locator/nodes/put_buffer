@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+
+import os
+import rospy
+import threading
+from zzz_common.params import parse_private_args
+
+from zzz_driver_msgs.msg import RigidBodyStateStamped
+from zzz_cognition_msgs.msg import MapState
+from zzz_navigation_msgs.msg import ReroutingRequest
+from zzz_cognition_object_locator import PathBuffer
+from nav_msgs.msg import Path
+
+from std_msgs.msg import Bool
+
+class Node(object):
+    def __init__(self,):
+        params = parse_private_args(
+            map_file = "",
+            map_input_topic = "local_dynamic_map/map_with_objects",
+            map_output_topic = "local_dynamic_map/map_with_ref",
+            map_file_type = "opendrive",
+            pose_topic = "/zzz/navigation/ego_pose",
+            reference_path_topic = "/zzz/navigation/reference_path",
+            rerouting_requried_topic = "/zzz/navigation/rerouting",
+            sent_ref_path_topic = "/zzz/cognition/sent_ref_path"
+        )
+
+        self._rate = rospy.Rate(20)
+
+        self._map_instance = PathBuffer()
+        self._map_instance.set_rerouting_trigger(self.rerouting_callback)
+
+        self._input_map_subscriber = rospy.Subscriber(params.map_input_topic, MapState, self._map_instance.receive_static_map)
+        self._pose_subscriber = rospy.Subscriber(params.pose_topic, RigidBodyStateStamped, self._map_instance.receive_ego_state)
+        self._reference_path_subscriber = rospy.Subscriber(params.reference_path_topic, Path, self._map_instance.receive_reference_path)
+        self._output_map_publisher = rospy.Publisher(params.map_output_topic, MapState, queue_size=1)
+        # TODO: we need a separate navigation/mission module to deal with rerouting request
+        self._rerouting_required_publisher = rospy.Publisher(params.rerouting_requried_topic, ReroutingRequest, queue_size=1)
+        self._sent_ref_path_path_publisher = rospy.Publisher(params.sent_ref_path_topic, Path, queue_size=1)
+
+    def rerouting_callback(self):
+        pass
+        # self._rerouting_required_publisher.publish(ReroutingRequest())
+
+    def loop(self):
+        while not rospy.is_shutdown():
+            new_map = self._map_instance.update()
+            if new_map:
+                rospy.logdebug("Sent reference path, length: %d", len(new_map.jmap.reference_path.map_lane.central_path_points))
+                self._output_map_publisher.publish(new_map)
+                self._sent_ref_path_path_publisher.publish(self._map_instance.ref_path_msg)
+            self._rate.sleep()
+
+
+if __name__ == "__main__":
+
+    rospy.init_node("put_buffer", log_level=rospy.DEBUG)
+    rospy.logdebug("### put_buffer launched ###")
+    node = Node()
+    node.loop()

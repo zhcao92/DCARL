@@ -1,0 +1,77 @@
+#!/usr/bin/env python
+
+import rospy
+from zzz_common.params import parse_private_args
+from zzz_cognition_msgs.msg import MapState
+from zzz_navigation_msgs.msg import Map
+from zzz_planning_decision_lane_models.longitudinal import IDM
+from zzz_planning_decision_lane_models.lateral import LaneUtility
+from zzz_planning_decision_lane_models.local_trajectory import Werling_planner, PolylineTrajectory #FIXME(ksj)
+from zzz_planning_decision_lane_models import MainDecision
+from zzz_planning_msgs.msg import DecisionTrajectory
+from nav_msgs.msg import Path
+from visualization_msgs.msg import Marker, MarkerArray
+
+
+class DecisionNode(object):
+    def __init__(self):
+
+        params = parse_private_args(
+            decision_trajectory_topic="decision_trajectory",
+            dynamic_map_topic="/zzz/cognition/local_dynamic_map/map_with_ref",
+            static_map_topic="/zzz/navigation/local_static_map",
+            RVIZ_decision_trajectory_topic="decision_trajectory_path", 
+            RVIZ_all_trajectory_topic="all_trajectory_path", 
+            RVIZ_predi_trajectory_topic="predi_trajectory_path", 
+            RVIZ_collision_circle_topic="collision_circle", 
+            hz = 5,
+        )
+        model_lon = IDM()
+        model_lat = LaneUtility(model_lon)
+        model_local = Werling_planner()
+
+        self._decision_instance = MainDecision(lon_decision=model_lon, lat_decision=model_lat, local_trajectory=model_local)
+        self._rate = rospy.Rate(params.hz)
+
+        self._dynamic_map_subscriber = rospy.Subscriber(params.dynamic_map_topic, MapState, self._decision_instance.receive_dynamic_map)
+        self._decision_trajectory_publisher = rospy.Publisher(params.decision_trajectory_topic, DecisionTrajectory, queue_size=1)
+        self._rviz_decision_trajectory_publisher = rospy.Publisher(params.RVIZ_decision_trajectory_topic, Path, queue_size=1)
+
+        self._rviz_all_trajectory_publisher = rospy.Publisher(params.RVIZ_all_trajectory_topic, MarkerArray, queue_size=1)
+        self._rviz_predi_trajectory_publisher = rospy.Publisher(params.RVIZ_predi_trajectory_topic, MarkerArray, queue_size=1)
+        self._rviz_collision_circle_publisher = rospy.Publisher(params.RVIZ_collision_circle_topic, MarkerArray, queue_size=1)
+        
+    def loop(self):
+        while not rospy.is_shutdown():
+            #zwt for running 
+            try:
+                publish_msg = self._decision_instance.update()
+            except:
+                pass
+
+            if publish_msg:
+                self._decision_trajectory_publisher.publish(publish_msg)
+                publish_msg2 = publish_msg.trajectory
+                self._rviz_decision_trajectory_publisher.publish(publish_msg2)
+                rospy.logdebug("PUBLISH: trajectory length = %d, desired_speed = %f", 
+                    len(publish_msg.trajectory.poses), publish_msg.desired_speed)
+
+            self.pub_rviz()
+
+            self._rate.sleep()
+
+    def pub_rviz(self):
+        all_trajectory, obs_paths, collision_circle = self._decision_instance._local_trajectory_instance.get_rviz_info()
+        
+        if all_trajectory:
+            self._rviz_all_trajectory_publisher.publish(all_trajectory)
+        if obs_paths:
+            self._rviz_predi_trajectory_publisher.publish(obs_paths)
+        if collision_circle:
+            self._rviz_collision_circle_publisher.publish(collision_circle)
+        
+if __name__ == "__main__":
+
+    rospy.init_node("decision_node", log_level=rospy.DEBUG)
+    node = DecisionNode()
+    node.loop()

@@ -1,0 +1,20 @@
+<package format="2">
+  <name>zzz_navigation_map_provider_sumo</name>
+  <version>0.1.0</version>
+  <description>
+    Adapt ZZZ input and output to CARLA
+  </description>
+  <license>BSD</license>
+  <maintainer email="zyxin@umich.edu">Yuanxin Zhong</maintainer>
+  <author email="zyxin@umich.edu">Yuanxin Zhong</author>
+
+  <url type="website">https://github.com/cmpute/zzz</url>
+  <url type="repository">https://github.com/cmpute/zzz</url>
+  <url type="bugtracker">https://github.com/cmpute/zzz/issues</url>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>zzz_driver_msgs</build_depend>
+  <build_export_depend>zzz_driver_msgs</build_export_depend>
+  <exec_depend>zzz_driver_msgs</exec_depend>
+  <export></export>
+</package>

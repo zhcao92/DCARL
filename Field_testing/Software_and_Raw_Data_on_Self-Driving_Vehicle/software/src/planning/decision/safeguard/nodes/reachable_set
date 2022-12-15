@@ -1,0 +1,67 @@
+#!/usr/bin/env python
+
+
+import rospy
+
+from zzz_common.params import parse_private_args
+from zzz_cognition_msgs.msg import MapState
+from zzz_planning_msgs.msg import DecisionTrajectory
+from zzz_planning_decision_safeguard.reachable_set import ReachableSet
+from nav_msgs.msg import Path  #FIXME(Nanshan)
+from sensor_msgs.msg import PointCloud2
+
+
+#from zzz_planning_decision_safeguard.DFrenet import ReachableSet #FIXME(Nanshan)
+
+
+class SafeguardNode(object):
+    def __init__(self):
+        params = parse_private_args(
+            decision_trajectory_topic="decision_trajectory", # input
+            safeguard_trajectory_topic="safeguard_trajectory", # output
+            RVIZ_safeguard_trajectory_topic="safeguard_trajectory_path",         #FIXME(Nanshan)
+            dynamic_map_topic="/zzz/cognition/local_dynamic_map/map_with_ref"
+            # lidar_topic ="/carla/ego_vehicle/lidar/Lidar/point_cloud" #input lidar
+            # important_point_topic ="robo_point" #filtered points
+            # target_frame="base_link"
+        
+        )
+        self._dynamic_map_subscriber = rospy.Subscriber(params.dynamic_map_topic, MapState, self.dynamic_map_callback)
+        self._decision_trajectory_subscriber = rospy.Subscriber(params.decision_trajectory_topic, DecisionTrajectory, self.decision_trajectory_callback)
+        self._safeguard_trajectory_publisher = rospy.Publisher(params.safeguard_trajectory_topic, DecisionTrajectory, queue_size=1)
+        self._rviz_safeguard_trajectory_publisher = rospy.Publisher(params.RVIZ_safeguard_trajectory_topic, Path, queue_size=1) #FIXME(Nanshan)
+        #self._safeguard_instance = ReachableSet() #
+        self._safeguard_instance = ReachableSet() #FIXME(nanshan)
+        # self.lidar_topic_subscriber = rospy.Subscriber(params.pop(lidar_topic), PointCloud2 self.point_registration)
+        # self.pubLaserCloud = rospy.Publisher(params.pop(important_point_topic), PointCloud2, queue_size=1)
+
+    def point_registration(self, lidar_points):
+        cloud_size = lidar_points
+
+        self._safeguard_instance.update_dynamic_map(dynamic_map)
+
+    def dynamic_map_callback(self, dynamic_map):
+        self._safeguard_instance.update_dynamic_map(dynamic_map)
+
+    def decision_trajectory_callback(self, decision):
+        decision_msg = self.check_trajectory(decision)
+        # rviz_decision_msg=decision_msg.trajectory  #FIXME(Nanshan)
+        self._safeguard_trajectory_publisher.publish(decision_msg)
+        # self._rviz_safeguard_trajectory_publisher.publish(rviz_decision_msg)  #FIXME(Nanshan)
+    def check_trajectory(self, decision):
+        #safeguard_triggered, safespeed = self._safeguard_instance.check_trajectory(decision.trajectory, decision.desired_speed)
+        # safeguard_triggered, safespeed, safetrajectory = self._safeguard_instance.check_trajectory(decision.trajectory, decision.desired_speed)
+
+        # if safeguard_triggered:
+        #     rospy.loginfo("Safeguarded triggered")
+        msg = decision
+        # msg.trajectory = safetrajectory.trajectory#decision.trajectory
+        # msg.desired_speed = safespeed
+
+        return msg
+
+if __name__ == "__main__":
+
+    rospy.init_node("safeguard_node", log_level=rospy.DEBUG)
+    node = SafeguardNode()
+    rospy.spin()

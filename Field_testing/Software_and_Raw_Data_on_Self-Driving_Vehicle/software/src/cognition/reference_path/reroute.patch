@@ -1,0 +1,49 @@
+diff --git a/carla_waypoint_publisher/src/carla_waypoint_publisher/carla_waypoint_publisher.py b/carla_waypoint_publisher/src/carla_waypoint_publisher/carla_waypoint_publisher.py
+index 44d34d7..0894e4b 100755
+--- a/carla_waypoint_publisher/src/carla_waypoint_publisher/carla_waypoint_publisher.py
++++ b/carla_waypoint_publisher/src/carla_waypoint_publisher/carla_waypoint_publisher.py
+@@ -24,9 +24,12 @@ from tf.transformations import euler_from_quaternion
+ from nav_msgs.msg import Path
+ from geometry_msgs.msg import PoseStamped
+ from carla_msgs.msg import CarlaWorldInfo
++from std_msgs.msg import Bool
+ 
+ import carla
+ 
++import random
++
+ from agents.navigation.global_route_planner import GlobalRoutePlanner
+ from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO
+ 
+@@ -40,7 +43,7 @@ class CarlaToRosWaypointConverter(object):
+     - the hero vehicle appears
+     - a new goal is set
+     """
+-    WAYPOINT_DISTANCE = 2.0
++    WAYPOINT_DISTANCE = 1.0
+ 
+     def __init__(self, carla_world):
+         self.world = carla_world
+@@ -57,6 +60,9 @@ class CarlaToRosWaypointConverter(object):
+         self.goal_subscriber = rospy.Subscriber(
+             "/carla/{}/goal".format(self.role_name), PoseStamped, self.on_goal)
+ 
++        self.goal_subscriber = rospy.Subscriber(
++            "/zzz/navigation/rerouting", Bool, self.rerouting_requirement_response)
++
+         self._update_lock = threading.Lock()
+ 
+         # use callback to wait for ego vehicle
+@@ -169,7 +175,12 @@ class CarlaToRosWaypointConverter(object):
+ 
+         self.waypoint_publisher.publish(msg)
+         rospy.loginfo("Published {} waypoints.".format(len(msg.poses)))
++    
++    def rerouting_requirement_response(self, msg):
+ 
++        carla_goal = random.choice(self.world.get_map().get_spawn_points())
++        self.goal = carla_goal
++        self.reroute()
+ 
+ def main():
+     """

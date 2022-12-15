@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+
+import threading
+__module_name__ = "map_provider"
+
+import os
+import rospy
+import actionlib
+from zzz_common.params import parse_private_args
+import threading
+
+from geometry_msgs.msg import Pose
+from nav_msgs.msg import Path
+from zzz_driver_msgs.msg import RigidBodyStateStamped
+from zzz_navigation_msgs.msg import Map, MapString
+from zzz_navigation_map_provider_sumo import CarlaMap
+
+class MapProvider(object):
+    def __init__(self):
+        params = parse_private_args(
+            map_output_topic = "local_static_map", # /zzz/navigation/local_static_map
+            pose_topic = "ego_pose", # /zzz/navigation/ego_pose
+            hz = 10
+        )
+        self._rate = rospy.Rate(params.hz)
+        self._map_instance = CarlaMap()
+
+        # Map Loading moved into init.
+        self._pose_subscriber = rospy.Subscriber(params.pose_topic, RigidBodyStateStamped, self.pose_callback)
+        self._local_map_publisher = rospy.Publisher(params.map_output_topic, Map, queue_size=1)
+
+
+    def pose_callback(self, msg):
+        # Note: Here we actually assume that pose is updating at highest frequency
+        self._map_instance.receive_new_pose(msg.state.pose.pose.position.x, msg.state.pose.pose.position.y)
+            
+    def loop(self):
+        while not rospy.is_shutdown():
+            self._rate.sleep()
+            new_static_map = self._map_instance.update()
+            if new_static_map is not None:
+                self._local_map_publisher.publish(new_static_map)
+                rospy.logdebug("[%s] Publish new static map" % __module_name__)
+
+
+if __name__ == "__main__":
+    rospy.init_node("map_provider", log_level=rospy.INFO)
+    node = MapProvider()
+    node.loop()

@@ -1,0 +1,326 @@
+#!/usr/bin/env python
+
+import os, logging
+import rospy
+import datetime
+import threading
+import collections
+import numpy as np
+from easydict import EasyDict
+
+import plotly
+import plotly.graph_objs as go
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Input, Output
+
+from zzz_common.logger import LogBridge
+from zzz_common.params import parse_private_args
+from zzz_driver_msgs.utils import get_speed
+from zzz_cognition_msgs.msg import MapState
+from zzz_control_msgs.msg import ControlCommand
+from zzz_planning_msgs.msg import DecisionTrajectory
+logging.getLogger('werkzeug').addHandler(LogBridge())
+
+params = parse_private_args(
+    dynamic_map_topic="/zzz/cognition/local_dynamic_map/map_with_ref",
+    command_topic="/zzz/control/command",
+    decision_trajactory="/zzz/planning/decision_trajectory"
+
+)
+
+start_play_time = 0
+app = dash.Dash()
+data_cache = EasyDict(
+    accel=0,
+    steer=0,
+    front_dist=collections.deque(maxlen=200),
+    rear_dist=collections.deque(maxlen=200),
+    ego_speed=collections.deque(maxlen=200),
+    ego_desired_speed=collections.deque(maxlen=200),
+    front_speed=collections.deque(maxlen=200),
+    rear_speed=collections.deque(maxlen=200),
+    time=collections.deque(maxlen=200),
+    cognition_model="",
+    cognition_method="",
+    decision_mode=0
+)
+
+####################### Style Settings #######################
+
+# XXX: reference https://github.com/ucg8j/awesome-dash
+# TODO: Add these paramters to ros parameter
+
+colors = {
+        'bg':'#282726',
+        'text':'#E1DCD9',
+        'line-color': ['#E1DCD9', '#A7414A', '#A37C27'],
+}
+infotext_style = {
+    'font-size': '10pt',
+    'font-family': 'Calibri',
+    'color': colors['text'],
+    'margin-left': '16px',
+    'margin-up': '0px',
+    'margin-down': '0px',
+}
+infotext_time_style = {
+    'font-size': '16pt',
+    'font-family': 'Calibri',
+    'color': colors['text'],
+    'text-align': 'center'
+}
+
+truth_line = dict(
+    width = 1.5,
+)
+percp_line = dict(
+    width = 1.5,
+    dash = 'dash'
+)
+
+app.layout = html.Div(
+    children=[
+        html.Table(
+            [html.Tr([
+                html.Td([
+                    html.Div([
+                            html.P('', id='server_time', style=infotext_time_style),
+                            html.P('', id='decision_model', style=infotext_time_style),
+                            html.P('----------------------------------------------'),
+                            html.P('Camera Perception: Enabled', style=infotext_style),
+                            html.P('Lidar Perception: Enabled', style=infotext_style),
+                            html.P('----------------------------------------------'),
+                            html.P('', id="cognition_model", style=infotext_style),
+                            html.P('', id="cognition_method", style=infotext_style),
+                            html.P('----------------------------------------------'),
+                            html.P('', id='acceleration', style=infotext_style),
+                            html.P('', id='steering', style=infotext_style),
+                        ]),
+                    ],
+                    rowSpan=5,
+                    style={
+                        'width': '25%',
+                    }
+                ),
+                html.Td([
+                    dcc.Graph(
+                        id = 'dist-graph'
+                    )],
+                    style={
+                        'width': '37.5%'
+                    }
+                ),
+                html.Td([
+                    dcc.Graph(
+                        id = 'speed-graph'
+                    )],
+                    style={
+                        'width': '37.5%'
+                    }
+                )],
+            )],
+        ),
+        dcc.Interval( # fresher
+            id='interval-component',
+            interval=500, # in milliseconds
+            n_intervals=0
+        )
+    ],
+    style={
+        'backgroundColor':colors['bg']
+    }, 
+)
+
+###################### Web Callbacks ########################
+
+@app.callback(Output('server_time', 'children'),
+             [Input('interval-component', 'n_intervals')])
+def fresh_time(niter):
+    global start_play_time
+    if start_play_time == 0:
+        start_play_time = rospy.Time.now().to_sec()
+    else:
+        pass
+    return 'Sim time: %.2fs' % (rospy.Time.now().to_sec() - start_play_time)
+
+@app.callback(Output('decision_model', 'children'),
+             [Input('interval-component', 'n_intervals')])
+def fresh_decision_model(niter):
+    if data_cache.decision_mode:
+        return 'Decision Mode: RL model'
+    else:
+        return 'Decision Mode: Rule model'
+
+
+@app.callback(Output('cognition_model', 'children'),
+             [Input('interval-component', 'n_intervals')])
+def fresh_cognition_model(niter):
+    return "Cognition Model: %s" % data_cache.cognition_model
+
+@app.callback(Output('cognition_method', 'children'),
+             [Input('interval-component', 'n_intervals')])
+def fresh_cognition_method(niter):
+    return "Cognition Method: %s" % data_cache.cognition_method
+
+@app.callback(Output('acceleration', 'children'),
+             [Input('interval-component', 'n_intervals')])
+def fresh_accel(niter):
+    return "Acceleration: %.2f" % data_cache.accel
+
+@app.callback(Output('steering', 'children'),
+             [Input('interval-component', 'n_intervals')])
+def fresh_steer(niter):
+    return "Steering: %.2f" % data_cache.steer
+
+@app.callback(Output('speed-graph', 'figure'),
+             [Input('interval-component', 'n_intervals')])
+def fresh_speed_graph(niter):
+    return {
+        'data':[
+            go.Scatter(
+                x = list(data_cache.time),
+                y = list(data_cache.ego_desired_speed),
+                name='Desired Speed',
+                line=dict(width=2, color=colors['line-color'][0]),
+            ),
+            go.Scatter(
+                x=list(data_cache.time),
+                y=list(data_cache.ego_speed),
+                name='Ego Vehicle',
+                line=dict(width=2, color=colors['line-color'][2]),
+            )
+        ],
+        'layout':{
+            'plot_bgcolor': colors['bg'],
+            'paper_bgcolor': colors['bg'],
+            'font':{
+                'color': colors['text']
+            },
+            'title':'Vehicle Speed',
+            'legend':dict(
+                orientation="h",
+            ),
+            'yaxis':dict(
+                title="Speed (kmph)",
+                range=[0,40],
+            ),
+            'xaxis':dict(
+                title="Timestamp (s)",
+                anchor="free",
+                position=0.1,
+            ),
+            'autosize': True,
+            'width': 500,
+            'height': 500,
+        },
+    }
+
+@app.callback(Output('dist-graph', 'figure'),
+             [Input('interval-component', 'n_intervals')])
+def fresh_dist_graph(niter):
+    return {
+        'data':[
+            go.Scatter(
+                x = list(data_cache.time),
+                y = list(data_cache.front_dist),
+                name='Front vehicle',
+                line=dict(width = 2, color=colors['line-color'][0]),
+            ),
+            go.Scatter(
+                x = list(data_cache.time),
+                y = list(data_cache.rear_dist),
+                name='Rear vehicle',
+                line=dict(width = 2, color=colors['line-color'][1]),
+            ),
+        ],
+        'layout':{
+            'plot_bgcolor': colors['bg'],
+            'paper_bgcolor': colors['bg'],
+            'font':{
+                'color': colors['text']
+            },
+            'title':'Surrounding Vehicle Distance',
+            'legend':dict(orientation="h"),
+            'yaxis':dict(
+                title="Distance (m)",
+                range=[0,80],
+            ),
+            'xaxis':dict(
+                title="Timestamp (s)",
+                anchor="free",
+                position=0.1,
+            ),
+            'autosize': True,
+            'width': 500,
+            'height': 500,
+        },
+    }
+
+###################### ROS Callbacks ########################
+
+def get_dist(state1, state2):
+    dx = state1.pose.pose.position.x - state2.pose.pose.position.x
+    dy = state1.pose.pose.position.y - state2.pose.pose.position.y
+    dz = state1.pose.pose.position.z - state2.pose.pose.position.z
+    return np.linalg.norm([dx, dy, dz])
+
+def dynamic_map_callback(msg):
+    global start_play_time
+    data_cache.time.append(msg.header.stamp.to_sec() - start_play_time)
+    data_cache.ego_speed.append(get_speed(msg.ego_state) * 3.6) # Convert to kmph
+
+    # Update map status
+    if msg.model == MapState.MODEL_MULTILANE_MAP:
+        data_cache.cognition_model = "Multi-Lane"
+        data_cache.cognition_method = "IDM + LaneUtility"
+    elif msg.model == MapState.MODEL_JUNCTION_MAP:
+        data_cache.cognition_model = "Junction"
+        data_cache.cognition_method = "Reachable Set"
+
+    # Update vehicle information
+    if msg.model == MapState.MODEL_MULTILANE_MAP and msg.mmap.ego_lane_index >= 0:
+        ego_lane = msg.mmap.lanes[int(msg.mmap.ego_lane_index)]
+    else:
+        ego_lane = msg.jmap.reference_path
+
+    if len(ego_lane.front_vehicles) > 0:
+        vehicle = ego_lane.front_vehicles[0]
+        data_cache.front_speed.append(get_speed(vehicle.state) * 3.6)
+        data_cache.front_dist.append(get_dist(msg.ego_state, vehicle.state))
+    else:
+        data_cache.front_speed.append(float('nan'))
+        data_cache.front_dist.append(float('nan'))
+
+    if len(ego_lane.rear_vehicles) > 0:
+        vehicle = ego_lane.rear_vehicles[0]
+        data_cache.rear_speed.append(get_speed(vehicle.state) * 3.6)
+        data_cache.rear_dist.append(get_dist(msg.ego_state, vehicle.state))
+    else:
+        data_cache.rear_speed.append(float('nan'))
+        data_cache.rear_dist.append(float('nan'))
+
+def command_callback(msg):
+    data_cache.accel = msg.accel
+    data_cache.steer = msg.steer
+
+def decision_trajactory_callback(msg):
+    data_cache.ego_desired_speed.append(msg.desired_speed * 3.6)
+    data_cache.ego_desired_speed.append(msg.desired_speed * 3.6)
+    data_cache.ego_desired_speed.append(msg.desired_speed * 3.6)
+    data_cache.ego_desired_speed.append(msg.desired_speed * 3.6)
+    data_cache.decision_mode = msg.RLS_action
+
+if __name__ == "__main__":
+    threading.Thread(target=lambda: rospy.init_node('dashboard', disable_signals=True)).start()
+
+    dynamic_map_subscriber = rospy.Subscriber(params.dynamic_map_topic, MapState, dynamic_map_callback)
+    command_subscriber = rospy.Subscriber(params.command_topic, ControlCommand, command_callback)
+    decision_trajactory = rospy.Subscriber(params.decision_trajactory, DecisionTrajectory, decision_trajactory_callback)
+
+    if 'ROS_IP' in os.environ:
+        ip = os.environ['ROS_IP']
+    else:
+        ip = '0.0.0.0'
+    app.run_server(host=ip, port=5000)

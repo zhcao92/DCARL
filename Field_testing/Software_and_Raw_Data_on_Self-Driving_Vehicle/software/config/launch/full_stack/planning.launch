@@ -1,0 +1,44 @@
+<!-- Planning & Control -->
+<launch>
+      <arg name="odom_topic" default="/carla/ego_vehicle/odometry"/>
+      <arg name="waypoint_topic" default="/carla/ego_vehicle/waypoints"/>
+      <arg name="objects_topic" default="/zzz/perception/objects_tracked"/>
+
+      <!-- <node pkg="zzz_cognition_object_locator" type="nearest_locator"  respawn="true"
+            name="nearest_locator" output="screen" ns="/zzz/cognition">
+            <param name="objects_topic" value="$(arg objects_topic)"/>
+      </node>
+
+      <node pkg="zzz_cognition_object_locator" type="driving_space"  respawn="true"
+            name="driving_space" output="screen" ns="/zzz/cognition">
+            <param name="objects_topic" value="$(arg objects_topic)"/>
+      </node>
+
+      <node pkg="zzz_cognition_object_locator" type="put_buffer"  respawn="true"
+            name="put_buffer" output="screen" ns="/zzz/cognition">
+            <param name="reference_path_topic" value="$(arg waypoint_topic)"/>
+      </node> -->
+
+      <!-- <node pkg="zzz_planning_decision_continuous_models" type="continuous_utility" respawn="true"
+            name="continuous_utility" output="screen" ns="/zzz/planning">
+      </node> -->
+
+      <!-- <node pkg="zzz_planning_decision_lane_models" type="idm_lane_utility"  respawn="true"
+            name="idm_lane_utility" output="screen" ns="/zzz/planning">
+      </node>
+       -->
+      <!--rls node-->
+      
+      <node pkg="zzz_planning_decision_lane_models" type="rls_train"  respawn="true"
+            name="rls_train" output="screen" ns="/zzz/planning">
+      </node> 
+     
+      <node pkg="zzz_visualization_rviz_box_visualizer" type="decision_trajactory"
+            name="decision_trajactory" output="screen" ns="/zzz/visualization">
+      </node>
+
+      <node pkg="zzz_visualization_rviz_box_visualizer" type="transform"
+            name="transform" output="screen" ns="/zzz/visualization">
+      </node>
+
+</launch>

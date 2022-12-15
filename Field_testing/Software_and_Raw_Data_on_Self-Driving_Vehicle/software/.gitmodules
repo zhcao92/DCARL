@@ -1,0 +1,6 @@
+[submodule "src/tools/openai_baselines"]
+	path = src/tools/openai_baselines
+	url = https://github.com/cmpute/baselines.git
+[submodule "src/driver/simulators/carla/carla_bridge"]
+	path = src/driver/simulators/carla/carla_bridge
+	url = https://github.com/carla-simulator/ros-bridge.git

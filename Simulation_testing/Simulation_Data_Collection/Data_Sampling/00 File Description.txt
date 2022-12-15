@@ -1,0 +1,2 @@
+data_sampling.py can generate the data for 20 states.
+action_value.npy, data.npy, states.npy are the generated data for confidence value calculation.

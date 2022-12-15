@@ -1,0 +1,9 @@
+DrawData.m is the code to draw the figure using Matlab.
+automode.txt records the autonomous driving condition.
+control.txt records the control signals.
+decisions.txt records the used action in the action space
+RLS.txt records the DCARL agent condition.
+surrounding_obj.txt records the surrounding objects, detected by the perception module.
+traffic.txt records some basic information for driving.
+
+These data are extracted from the original rosbag. 

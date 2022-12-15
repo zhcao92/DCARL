@@ -1,0 +1,79 @@
+#!/usr/bin/env python  
+import rospy
+
+# Because of transformations
+
+import tf2_ros
+import geometry_msgs.msg
+from zzz_driver_msgs.msg import RigidBodyStateStamped
+from zzz_cognition_msgs.msg import MapState
+from visualization_msgs.msg import Marker, MarkerArray
+
+
+def tf_handle(msg):
+    br = tf2_ros.TransformBroadcaster()
+    t = geometry_msgs.msg.TransformStamped()
+
+    t.header.stamp = rospy.Time.now()
+    t.header.frame_id = "map"
+    t.child_frame_id = "odom"
+    t.transform.translation.x = msg.state.pose.pose.position.x
+    t.transform.translation.y = msg.state.pose.pose.position.y
+    t.transform.translation.z = 0.0
+    t.transform.rotation.x = msg.state.pose.pose.orientation.x
+    t.transform.rotation.y = msg.state.pose.pose.orientation.y
+    t.transform.rotation.z = msg.state.pose.pose.orientation.z
+    t.transform.rotation.w = msg.state.pose.pose.orientation.w
+
+    br.sendTransform(t)
+
+    tempmarker = Marker()
+    tempmarker.header.frame_id = "map"
+    tempmarker.header.stamp = rospy.Time.now()
+    tempmarker.ns = "zzz/decision"
+    tempmarker.id = 1
+    tempmarker.type = Marker.CUBE
+    tempmarker.action = Marker.ADD
+    tempmarker.pose = msg.state.pose.pose
+    tempmarker.scale.x = 4.0
+    tempmarker.scale.y = 2.0
+    tempmarker.scale.z = 1.8
+    tempmarker.color.r = 1.0
+    tempmarker.color.g = 0.0
+    tempmarker.color.b = 0.0
+    tempmarker.color.a = 0.5
+    tempmarker.lifetime = rospy.Duration(0.5)
+    publisher.publish(tempmarker)
+
+def draw_obs(msg):
+    obs_ma = MarkerArray()
+    id = 0
+    for obj in msg.jmap.obstacles:
+        tempmarker = Marker()
+        tempmarker.header.frame_id = "map"
+        tempmarker.header.stamp = rospy.Time.now()
+        tempmarker.ns = "zzz/decision"
+        tempmarker.id = id
+        id+=1
+        tempmarker.type = Marker.CUBE
+        tempmarker.action = Marker.ADD
+        tempmarker.pose = obj.state.pose.pose
+        tempmarker.scale.x = obj.dimension.length_x
+        tempmarker.scale.y = obj.dimension.length_y
+        tempmarker.scale.z = obj.dimension.length_z
+        tempmarker.color.r = 0.0
+        tempmarker.color.g = 1.0
+        tempmarker.color.b = 0.0
+        tempmarker.color.a = 0.5
+        tempmarker.lifetime = rospy.Duration(0.5)
+        obs_ma.markers.append(tempmarker)
+    obs_publisher.publish(obs_ma)
+
+if __name__ == '__main__':
+    rospy.init_node('tf2_turtle_broadcaster')
+    publisher = rospy.Publisher("/zzz/planning/ego_vehicle_marker", Marker, queue_size=1)
+    obs_publisher = rospy.Publisher("/zzz/planning/obs_marker", MarkerArray, queue_size=1)
+    pose_subscriber = rospy.Subscriber("/zzz/navigation/ego_pose", RigidBodyStateStamped, tf_handle)
+    dynamic_map_subscriber = rospy.Subscriber("/zzz/cognition/local_dynamic_map/map_with_ref", MapState, draw_obs)
+
+    rospy.spin()

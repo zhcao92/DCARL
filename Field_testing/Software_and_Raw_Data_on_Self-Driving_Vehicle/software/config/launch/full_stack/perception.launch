@@ -1,0 +1,41 @@
+<launch>
+
+  <arg name='role_name' default='ego_vehicle'/>
+  <arg name='run_platform' default='$(env RUN_PLATFORM)'/>
+  <!-- 
+    # lidar_euclidean_cluster_detect #
+    @todo: still required?
+  -->
+  <include file="$(find lidar_cnn_seg_detect_trt)/launch/lidar_cnn_seg_detect_trt.launch">
+    <!-- <group if="$(eval run_platform == 'carla')"> -->
+      <!-- <arg name="points_src" value="/points_raw" /> -->
+    <!-- </group> -->
+    <!-- <group if="$(eval run_platform == 'xiaopeng')"> -->
+      <arg name="points_src" value="/middle/rslidar_points" />
+    <!-- </group> -->
+  </include>
+
+  <!-- 
+    # lidar detection #
+    @todo: add
+    value="[-0.027756, -0.99923, -0.027761, 0.9991, -0.026836, -0.032968, 0.032197, -0.028651, 0.99907]"
+    value="[0.9991, -0.026836, -0.027761, 0.027756, 0.99923, -0.032968, 0.032197, -0.028651, 0.99907]"
+  -->
+  <include file="$(find global_ukf_track)/launch/global_ukf_track.launch">
+    <arg name="input_odm_topic" value="/localization/gps/odom" />
+    <arg name="lidar2imu_rotation" 
+        default="[0.9995, 0.0314, -0.0063, -0.0312, 0.9991, 0.0303, 0.0073, -0.0301, 0.9995]" />
+    <arg name="lidar2imu_translation" 
+        default="[1.02, 0.0, 1.09]" />   
+  </include>
+
+  <include file="$(find tf4hmi)/launch/tf4hmi.launch">
+    <arg name="input_odom_topic" value="/localization/gps/odom" />
+    <arg name="lidar2imu_rotation" 
+        default="[0.9995, 0.0314, -0.0063, -0.0312, 0.9991, 0.0303, 0.0073, -0.0301, 0.9995]" />
+    <arg name="lidar2imu_translation" 
+        default="[1.02, 0.0, 1.09]" />   
+  </include>
+
+</launch>
+

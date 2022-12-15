@@ -1,0 +1,44 @@
+<launch>
+  <!-- leopard usb-cam. param: 1920x1020 yuyv  -->
+  <include file="$(find usb_cam)/launch/usb_cam-test.launch">  
+  </include> 
+
+  <!-- all three lidar  -->
+  <include file="$(find rslidar_sync)/launch/rslidar_sync_3lidar.launch">  
+  </include>
+
+  <!-- continental radar  -->
+  <include file="$(find continental_radar)/launch/continental_radar.launch">  
+  </include>
+
+  <!-- ultrasonic radar  -->
+  <include file="$(find us_radar)/launch/usradar.launch">  
+  </include>
+  
+  <!-- cannet get car's control/status info  -->
+  <include file="$(find canbus)/launch/canbus.launch">  
+  </include>
+
+  <!-- <node pkg="xpmotors" name="auto_state"  type="auto_state_node" output="screen">
+  </node> 
+  <node pkg="xpmotors" name="auto_control"  type="auto_control_node" output="screen">
+    <rosparam file="$(find xpmotors)/conf.yaml"/>
+  </node>  -->
+
+  <!-- oxford gps imu  -->
+  <include file="$(find oxford_gps_eth)/launch/gps.launch">  
+  </include>
+
+  <!-- localization -->
+  <include file="$(find global_localization)/launch/global_fusion_oxford_2.launch">  
+  </include>
+
+  <!-- short range radar  -->
+  <include file="$(find srr_radar)/launch/srr_radar.launch">  
+  </include>
+
+  <!-- health checker  -->
+  <!-- include file="$(find health_checker)/launch/health_checker.launch">  
+  </include-->
+
+</launch>

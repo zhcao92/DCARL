@@ -1,0 +1,78 @@
+#!/usr/bin/env python
+
+import threading
+__module_name__ = "map_provider"
+
+import os
+import rospy
+import actionlib
+from zzz_common.params import parse_private_args
+import threading
+
+from geometry_msgs.msg import Pose
+from nav_msgs.msg import Path
+from zzz_driver_msgs.msg import RigidBodyStateStamped
+from zzz_navigation_msgs.msg import Map, MapString
+from zzz_navigation_map_provider_sumo.local_map import LocalMap
+
+MAP_TYPES = {
+    MapString.MAP_UNKNOWN: "unknown",
+    MapString.MAP_OPENDRIVE: "opendrive",
+    MapString.MAP_SUMO: "sumo"
+}
+
+class MapProvider(object):
+    def __init__(self):
+        params = parse_private_args(
+            map_file = "",
+            map_input_topic = "static_map", # /zzz/navigation/static_map
+            map_output_topic = "local_static_map", # /zzz/navigation/local_static_map
+            map_file_type = "opendrive",
+            pose_topic = "ego_pose", # /zzz/navigation/ego_pose
+            reference_path_topic = "reference_path", # /zzz/navigation/reference_path, waypoints
+            hz = 10
+        )
+        self._map_trigger = threading.Event()
+        self._reference_path_trigger = 0
+        self._rate = rospy.Rate(params.hz)
+
+        self._map_instance = LocalMap()
+        if os.path.exists(params.map_file):
+            if self._map_instance.setup_hdmap(file=params.map_file, mtype=params.map_file_type):
+                self._map_trigger.set()
+
+        self._static_map_subscriber = rospy.Subscriber(params.map_input_topic, MapString, self.load_map_callback)
+        self._pose_subscriber = rospy.Subscriber(params.pose_topic, RigidBodyStateStamped, self.pose_callback)
+        self._reference_path_subscriber = rospy.Subscriber(params.reference_path_topic, Path, self.reference_callback)
+        self._local_map_publisher = rospy.Publisher(params.map_output_topic, Map, queue_size=1)
+
+    def load_map_callback(self, map):
+        if self._map_instance.setup_hdmap(
+            content=map.content, mtype=MAP_TYPES[map.map_type]):
+            self._map_trigger.set()
+        rospy.loginfo("[%s] Map loaded" % __module_name__)
+        
+    def reference_callback(self, msg):
+        self._map_trigger.wait()
+        if self._map_instance.setup_reference_lane_list(msg):
+            self._reference_path_trigger = 1
+        rospy.loginfo("[%s] Received reference path" % __module_name__)
+
+    def pose_callback(self, msg):
+        # Note: Here we actually assume that pose is updating at highest frequency
+        self._map_instance.receive_new_pose(msg.state.pose.pose.position.x, msg.state.pose.pose.position.y)
+            
+    def loop(self):
+        while not rospy.is_shutdown():
+            self._rate.sleep()
+            if self._reference_path_trigger:
+                new_static_map = self._map_instance.update()
+                if new_static_map is not None:
+                    self._local_map_publisher.publish(new_static_map)
+                    rospy.logdebug("[%s] Publish new static map" % __module_name__)
+
+
+if __name__ == "__main__":
+    rospy.init_node("map_provider", log_level=rospy.INFO)
+    node = MapProvider()
+    node.loop()

@@ -1,0 +1,25 @@
+<launch>
+
+    <arg name="odom_topic" default="/carla/ego_vehicle/odometry"/>
+    <arg name="waypoint_topic" default="/carla/ego_vehicle/waypoints"/>
+    <arg name="objects_topic" default="/zzz/perception/objects_tracked"/>
+
+    <arg name="bagreplay" value="$(optenv ENABLE_BAGREPLAY false)"/>
+    <group if="$(arg bagreplay)">
+        <include file="$(find rslidar_point_convert)/launch/middle_lidar.launch"> 
+        </include>
+    </group>
+
+    <include file="$(env ZZZ_ROOT)/zzz/config/launch/full_stack/perception.launch">
+    </include> 
+
+    <include file="$(find baidu_static_map)/launch/baidu_static_map.launch">
+    </include> 
+
+    <include file="$(env ZZZ_ROOT)/zzz/config/launch/full_stack/planning.launch">
+        <arg name="objects_topic" value="/zzz/perception/objects_tracked"/>
+    </include>
+
+    <!-- <include file="$(find icvfollower)/launch/ICVfollower.launch" />  -->
+
+</launch>

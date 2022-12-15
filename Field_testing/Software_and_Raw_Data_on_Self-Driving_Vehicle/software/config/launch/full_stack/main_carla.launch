@@ -1,0 +1,26 @@
+<launch>
+    <arg name="odom_topic" default="/carla/ego_vehicle/odometry"/>
+    <arg name="waypoint_topic" default="/carla/ego_vehicle/waypoints"/>
+    <arg name="objects_topic" default="/carla/ego_vehicle/objects"/>
+    <param name="running_mode" value="carla"/>
+
+    <node pkg="zzz_navigation_pose_reporter" type="manual"
+              name="pose_reporter" output="screen" ns="/zzz/navigation">
+            <param name="map_origin" value="[49,8,0]"/>
+            <param name="odom_input_topic" value="$(arg odom_topic)"/>
+    </node>
+    <node pkg="zzz_navigation_map_provider_sumo" type="local_map_generator"
+            name="static_map_builder" output="screen" ns="/zzz/navigation">
+          <param name="reference_path_topic" value="$(arg waypoint_topic)"/>
+    </node>
+
+    <include file="$(env ZZZ_ROOT)/zzz/config/launch/full_stack/planning.launch">
+        <arg name="objects_topic" value="/carla/ego_vehicle/objects"/>
+    </include>
+
+    <node pkg="zzz_control_latlon_controllers" type="pure_persuit"  respawn="true"
+            name="latlon_controller" output="screen" ns="/zzz/control">
+    </node>
+    <!-- xiaopeng adpater -->
+    <!-- <include file="$(env ZZZ_ROOT)/zzz/src/driver/simulators/carla/carla_adapter/scripts/use_bridge/auxiliary.launch"/> -->
+</launch>

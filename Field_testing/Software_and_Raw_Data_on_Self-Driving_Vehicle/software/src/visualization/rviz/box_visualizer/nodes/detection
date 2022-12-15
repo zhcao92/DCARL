@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+
+import rospy
+
+from zzz_common.params import parse_private_args
+from zzz_perception_msgs.msg import DetectionBoxArray
+from visualization_msgs.msg import MarkerArray
+from zzz_visualization_rviz_box_visualizer.detection import DetectionBoxVisualizer
+
+class Node():
+    def __init__(self):
+        params = parse_private_args(
+            input_topic="objects_detected",
+            output_topic="objects_visual",
+            marker_namespace="/zzz/detection",
+
+            marker_lifetime=0.2,
+            label_color=[255,255,255,1],
+            box_color=[51,102,255,0.8],
+            centroid_color=[255,255,102,0.8],
+            
+            centroid_scale=0.5,
+            label_scale=0.5,
+            label_height=1,
+            box_max_size=10
+        )
+
+        self._subscriber = rospy.Subscriber(params.pop("input_topic"), DetectionBoxArray, self.callback)
+        self._publisher = rospy.Publisher(params.pop("output_topic"), MarkerArray, queue_size=1)
+        self._visualizer = DetectionBoxVisualizer(**params)
+
+    def callback(self, msg):
+        self._publisher.publish(self._visualizer.visualize(msg))
+
+if __name__ == "__main__":
+    rospy.init_node("detection_visualizer")
+    node = Node()
+    rospy.spin()

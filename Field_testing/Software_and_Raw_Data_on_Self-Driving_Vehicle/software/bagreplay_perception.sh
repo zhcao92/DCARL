@@ -1,0 +1,2 @@
+rosbag play --topics /tf /zzz/navigation/ego_pose /localization/gps/odom /left_usb_cam/image_raw/compressed /middle/rslidar_points --bag "$1"  -s "$2" 
+# rosbag play --topics /locallization/gps/odom /zzz/navigation/ego_pose /left_usb_cam/image_raw/compressed /middle/rslidar_packets /middle/rslidar_packets_difop --bag "$1" -s "$2" 

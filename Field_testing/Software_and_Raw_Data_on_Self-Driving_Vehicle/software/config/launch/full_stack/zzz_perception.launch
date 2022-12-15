@@ -1,0 +1,115 @@
+<launch>
+    <arg name="enable_camera" default="true"/>
+    <arg name="enable_lidar" default="true"/>
+
+    <arg name="left_camera_topic" default="/carla/ego_vehicle/camera/rgb/Center"/>
+    <arg name="right_camera_topic" default="/carla/ego_vehicle/camera/rgb/Right"/>
+    <arg name="lidar_topic" default="/carla/ego_vehicle/lidar/Lidar/point_cloud"/>
+
+    <!-- lidar_euclidean_cluster_detect -->
+    <include file="$(find lidar_cnn_seg_detect_trt)/launch/lidar_cnn_seg_detect_trt.launch">
+    </include>
+
+    <!-- ukf track  -->
+    <include file="$(find global_ukf_track)/launch/global_ukf_track.launch">
+    </include>
+
+    <!-- Original ZZZ Perception -->
+    <!-- Camera Perception -->
+    <!-- <group if="$(arg enable_camera)">
+        <node pkg="zzz_perception_detection_camera_detectors" type="yolo"
+            name="yolo_node" output="screen" ns="/zzz/perception">
+            <env   name="PYTHONPATH"   value="$(env PYTHONPATH):/home/carla/.conda/envs/torchpy2/lib/python2.7/site-packages"/>
+            <param name="input_topic"  value="$(arg left_camera_topic)/image_color"/>
+            <param name="cfg_file"     value="$(find zzz_perception_detection_camera_detectors)/src/yolov3/cfg/yolov3-spp.cfg"/>
+            <param name="data_file"    value="$(find zzz_perception_detection_camera_detectors)/src/yolov3/data/coco.data"/>
+            <param name="weights_file" value="$(find zzz_perception_detection_camera_detectors)/src/yolov3/weights/yolov3-spp.weights"/>
+            <param name="names_file"   value="$(find zzz_perception_detection_camera_detectors)/src/yolov3/data/coco.names"/>
+        </node>
+        <node pkg="zzz_perception_detection_camera_filters" type="ipm_projector"
+            name="ipm" output="screen" ns="/zzz/perception">
+            <param name="output_topic" value="objects_projected"/>
+        </node>
+        <node pkg="zzz_perception_tracking_object_filters" type="to_static"
+            name="static2d_converter" output="screen" ns="/zzz/perception">
+            <param name="input_topic" value="objects_projected"/>
+            <param name="output_topic" value="objects_transformed"/>
+        </node>
+        <node pkg="zzz_visualization_rviz_box_visualizer" type="detection2d"
+            name="dbox_visualize_img" output="screen" ns="/zzz/perception">
+            <param name="input_topic" value="objects2d_detected"/>
+            <param name="image_topic" value="$(arg left_camera_topic)/image_color"/>
+        </node>
+        
+        <node pkg="zzz_perception_detection_camera_filters" type="pseudo_lidar_generator"
+            name="pseudo" output="screen" ns="/zzz/perception">
+            <env   name="PYTHONPATH"   value="$(env PYTHONPATH):/home/carla/.conda/envs/torchpy2/lib/python2.7/site-packages:/home/carla/.conda/envs/torchpy2/lib/python2.7/site-packages/torchvision-0.2.0-py2.7.egg"/>
+            <param name="input_topic_left"  value="$(arg left_camera_topic)/image_color"/>
+            <param name="input_topic_right" value="$(arg right_camera_topic)/image_color"/>
+            <param name="camera_info_left" value="$(arg left_camera_topic)/camera_info"/>
+        </node>
+        <node pkg="zzz_perception_detection_fused_detectors" type="frustum"
+            name="frustum_based" output="screen" ns="/zzz/perception">
+            <env   name="PYTHONPATH"   value="$(env PYTHONPATH):/home/carla/.conda/envs/tfpy2gpu/lib/python2.7/site-packages"/>
+            <param name="input_2ddection_topic" value="objects2d_detected"/>
+            <param name="input_camera_topic" value="$(arg left_camera_topic)/image_color"/>
+            <param name="camera_info_topic" value="$(arg left_camera_topic)/camera_info"/>
+            <param name="input_topic_lidar" value="points_pseudo"/>
+            <param name="output_topic" value="objects_transformed"/>
+        </node>
+    </group> -->
+
+    <!-- Lidar Perception -->
+    <!-- <group if="$(arg enable_lidar)">
+        <node pkg="zzz_perception_detection_lidar_filters" type="extrinsic"
+            name="extrinsic_filter" output="screen" ns="/zzz/perception">
+            <param name="input_topic" value="$(arg lidar_topic)"/>
+            <param name="output_topic" value="points_transformed"/>
+            <param name="target_frame" value="ego_vehicle"/>
+        </node>
+        <node pkg="zzz_perception_detection_lidar_detectors" type="euclidean_cluster"
+            name="euclidean_detector" output="screen" ns="/zzz/perception">
+            <param name="input_topic" value="points_transformed"/>
+            <param name="output_topic" value="objects_detected"/>
+        </node>
+        <node pkg="zzz_perception_detection_lidar_filters" type="lshape"
+            name="euclidean_lshape" output="screen" ns="/zzz/perception">
+            <param name="input_topic" value="objects_detected"/>
+            <param name="output_topic" value="objects_lshape"/>
+        </node>
+        <node pkg="zzz_visualization_rviz_box_visualizer" type="detection"
+            name="dbox_visualize" output="screen" ns="/zzz/perception">
+            <param name="input_topic" value="objects_detected"/>
+            <param name="marker_lifetime" value="0.5"/>
+            <param name="box_max_size" value="9999999"/>
+        </node>
+    </group> -->
+
+    <!-- Trackers -->
+    <!-- <node pkg="zzz_perception_tracking_object_filters" type="criteria"
+          name="euclidean_criteria" output="screen" ns="/zzz/perception">
+        <param name="input_topic" value="objects_lshape"/>
+        <param name="output_topic" value="objects_filtered"/>
+        <param name="min_length_x" value="0.2"/>
+        <param name="min_length_y" value="0.2"/>
+        <param name="min_length_z" value="0.2"/>
+    </node>
+    <node pkg="zzz_perception_tracking_object_filters" type="to_static"
+          name="static_converter" output="screen" ns="/zzz/perception">
+        <param name="input_topic" value="objects_filtered"/>
+        <param name="output_topic" value="objects_transformed"/>
+    </node>
+    <node pkg="zzz_perception_tracking_object_trackers" type="box_tracker"
+          name="box_tracker" output="screen" ns="/zzz/perception">
+        <param name="detection_topic" value="objects_transformed"/>
+        <param name="tracking_topic" value="objects_tracked"/>
+    </node>
+    <node pkg="zzz_visualization_rviz_box_visualizer" type="tracking"
+          name="box_visualize" output="screen" ns="/zzz/perception">
+        <param name="input_topic" value="objects_tracked"/>
+        <param name="output_topic" value="carla/debug_marker"/>
+        <param name="marker_lifetime" value="0.5"/>
+        <param name="box_max_size" value="9999999"/>
+    </node> -->
+
+</launch>

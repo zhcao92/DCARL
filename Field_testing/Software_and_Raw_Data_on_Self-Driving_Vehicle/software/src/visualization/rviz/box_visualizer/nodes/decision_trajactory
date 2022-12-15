@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+
+import rospy
+import numpy as np
+from zzz_common.params import parse_private_args
+from zzz_planning_msgs.msg import DecisionTrajectory
+from visualization_msgs.msg import MarkerArray
+from zzz_visualization_rviz_box_visualizer.utils import RvizVisualizer
+
+class DecisionVisualiaze():
+    def __init__(self):
+
+        self._subscriber = rospy.Subscriber('/zzz/planning/decision_trajectory', DecisionTrajectory, self.callback)
+        self._decision_trajectory_markerarray_publisher = rospy.Publisher('/zzz/planning/decision_MarkerArray', MarkerArray, queue_size=1)
+        self._decision_trajectory_markerarray = None
+
+    def callback(self, msg):
+        # print('current mode {0}'.format(msg.RLS_action))
+        trajectory = msg.trajectory
+        trajectory_array = self.convert_path_to_ndarray(trajectory)
+        self._decision_trajectory_markerarray = RvizVisualizer.draw_line_from_points(trajectory_array, width=1, color=(0, 1, 0))
+        self._decision_trajectory_markerarray_publisher.publish(self._decision_trajectory_markerarray)
+
+    def convert_path_to_ndarray(self, path):
+        point_list = [(point.pose.position.x, point.pose.position.y) for point in path.poses]
+        return np.array(point_list)
+
+if __name__ == "__main__":
+    rospy.init_node("decision_visualizer")
+    node = DecisionVisualiaze()
+    rospy.spin()

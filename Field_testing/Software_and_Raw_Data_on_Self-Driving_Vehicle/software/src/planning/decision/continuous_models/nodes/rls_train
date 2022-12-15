@@ -1,0 +1,91 @@
+#!/usr/bin/env python
+
+import rospy
+from zzz_common.params import parse_private_args
+from zzz_cognition_msgs.msg import MapState
+
+from zzz_planning_decision_continuous_models.VEG_ITSC.VEG_planner import VEG_Planner_ITSC
+from zzz_planning_decision_continuous_models.VEG.VEG_planner import VEG_Planner
+from zzz_planning_decision_continuous_models import MainDecision
+
+from visualization_msgs.msg import Marker, MarkerArray
+from nav_msgs.msg import Path
+from zzz_planning_msgs.msg import DecisionTrajectory
+from carla_msgs.msg import CarlaCollisionEvent 
+
+
+class RLSNode(object):
+    def __init__(self):
+
+        params = parse_private_args(
+            decision_trajectory_topic="decision_trajectory",
+            dynamic_map_topic="/zzz/cognition/local_dynamic_map/map_with_ref",
+            collision_topic="/carla/ego_vehicle/collision",
+            RVIZ_decision_trajectory_topic="decision_trajectory_path", 
+            RVIZ_all_trajectory_topic="all_trajectory_path", 
+            RVIZ_predi_trajectory_topic="predi_trajectory_path", 
+            RVIZ_collision_circle_topic="collision_circle", 
+            RVIZ_kick_in_signal_topic="kick_in_signal",
+            hz = 10,
+        )
+        self._rate = rospy.Rate(params.hz)
+        
+        model_trajectory = VEG_Planner()
+        self._decision_instance = MainDecision(trajectory_planner=model_trajectory)
+
+        # ROS messages
+        self._decision_trajectory_publisher = rospy.Publisher(params.decision_trajectory_topic, DecisionTrajectory, queue_size=1)
+        self._collision_subscriber = rospy.Subscriber("/carla/ego_vehicle/collision", CarlaCollisionEvent, self.collision_callback)
+        self._dynamic_map_subscriber = rospy.Subscriber(params.dynamic_map_topic, MapState, self._decision_instance.receive_dynamic_map)
+
+        self._rviz_decision_trajectory_publisher = rospy.Publisher(params.RVIZ_decision_trajectory_topic, Path, queue_size=1)
+        self._rviz_all_trajectory_publisher = rospy.Publisher(params.RVIZ_all_trajectory_topic, MarkerArray, queue_size=1)
+        self._rviz_predi_trajectory_publisher = rospy.Publisher(params.RVIZ_predi_trajectory_topic, MarkerArray, queue_size=1)
+        self._rviz_collision_circle_publisher = rospy.Publisher(params.RVIZ_collision_circle_topic, MarkerArray, queue_size=1)
+        self._rviz_kick_in_signal_publisher = rospy.Publisher(params.RVIZ_kick_in_signal_topic, MarkerArray, queue_size=1)
+
+
+    def loop(self):
+        while not rospy.is_shutdown():
+            publish_msg = self._decision_instance.update_trajectory()
+            if publish_msg:
+                self._decision_trajectory_publisher.publish(publish_msg)
+                publish_msg2 = publish_msg.trajectory
+                self._rviz_decision_trajectory_publisher.publish(publish_msg2)
+                rospy.logdebug("PUBLISH: trajectory length = %d, desired_speed = %f", 
+                    len(publish_msg.trajectory.poses), publish_msg.desired_speed)
+            try:
+                self.pub_rviz()
+            except:
+                rospy.logdebug("rviz_display failed")
+                
+            self._rate.sleep()
+        
+    def pub_rviz(self):
+        all_trajectory = self._decision_instance._trajectory_planner._rule_based_trajectory_model_instance.rivz_element.candidates_trajectory
+        obs_paths = self._decision_instance._trajectory_planner._rule_based_trajectory_model_instance.rivz_element.prediciton_trajectory
+        collision_circle = self._decision_instance._trajectory_planner._rule_based_trajectory_model_instance.rivz_element.collision_circle
+        kick_in_signal = self._decision_instance._trajectory_planner.rivz_element.kick_in_signal
+        
+        if all_trajectory:
+            self._rviz_all_trajectory_publisher.publish(all_trajectory)
+        if obs_paths:
+            self._rviz_predi_trajectory_publisher.publish(obs_paths)
+        if collision_circle:
+            self._rviz_collision_circle_publisher.publish(collision_circle)
+        if kick_in_signal:
+            self._rviz_kick_in_signal_publisher.publish(kick_in_signal)
+    
+
+
+    def collision_callback(self, msg):
+        self._decision_instance._trajectory_planner._collision_signal = True
+
+if __name__ == "__main__":
+
+    rospy.init_node("rls_node", log_level=rospy.DEBUG)
+    node = RLSNode()
+    node.loop()
+
+   # rospy.spin()
+

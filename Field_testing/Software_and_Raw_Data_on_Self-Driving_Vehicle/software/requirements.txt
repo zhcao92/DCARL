@@ -1,0 +1,16 @@
+easydict
+cython 
+utm
+intervaltree
+plotly
+dash
+filterpy
+scipy
+numpy
+shapely
+cvxopt
+gym
+networkx
+msgpack
+mpi4py
+joblib
