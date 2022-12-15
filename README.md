@@ -1,7 +1,8 @@
 # Readme of Supplementary Data File
 
 This is the code repository for article "Continuous Improvement of Self-Driving Cars using Dynamic Confidence-Aware Reinforcement Learning"
-[![DOI](https://zenodo.org/badge/546432452.svg)](https://zenodo.org/badge/latestdoi/546432452)
+
+[![DOI](https://zenodo.org/badge/578512035.svg)](https://zenodo.org/badge/latestdoi/578512035)
 
 ## 1. Structure
 
